@@ -39,6 +39,7 @@ const state = {
     sirenOscillator: null,
     sirenGain: null,
     soundEnabled: true,
+    patientName: 'Opa Harun',
 
     // Incident Logs
     logs: [
@@ -76,10 +77,41 @@ document.addEventListener('DOMContentLoaded', () => {
     initSensorChart();
     initAudioEngine();
     renderLogs();
+    updatePatientNameUI();
     
     // Start main sensor telemetry loop (30 FPS simulation)
     setInterval(updateTelemetryLoop, 100);
 });
+
+function updatePatientNameUI() {
+    const nameDisplay = document.getElementById('patient-name-display');
+    const initialsDisplay = document.getElementById('patient-initials-display');
+    const mapTooltip = document.getElementById('map-patient-tooltip');
+    const dispatchText = document.getElementById('dispatch-text');
+    
+    if (nameDisplay) nameDisplay.innerText = `${state.patientName} (78 th)`;
+    
+    if (initialsDisplay) {
+        const initials = state.patientName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+        initialsDisplay.innerText = initials;
+    }
+    
+    if (mapTooltip) {
+        mapTooltip.innerText = `${state.patientName} (Di ${state.currentRoom})`;
+    }
+    
+    if (dispatchText) {
+        dispatchText.value = `[ALERT SOS JATUH DETEKSI]
+Pasien: ${state.patientName} (78 th)
+Status: EMERGENCY FALL DETECTED!
+Impact: ${state.gForce.toFixed(2)}g
+Postur: ${state.tiltAngle > 45 ? 'Telentang' : 'Tegak'} (Tilt ${state.tiltAngle}°)
+Lokasi: ${state.currentRoom} (GPS: -6.2088, 106.8456)
+BPM: ${state.bpm} BPM
+Waktu: Realtime
+Mohon segera cek kondisi pasien!`;
+    }
+}
 
 // --- Realtime Clock ---
 function initClock() {
@@ -170,8 +202,9 @@ function updateTelemetryLoop() {
     // Calculate Total Acceleration magnitude |A|
     state.gForce = Math.sqrt(state.ax * state.ax + state.ay * state.ay + state.az * state.az);
 
-    // Update UI Vitals
+    // Update UI Vitals & Dispatch Payload
     updateVitalsUI();
+    updatePatientNameUI();
     
     // Push into chart buffer
     state.chartData.x.shift(); state.chartData.x.push(state.ax);
@@ -589,15 +622,21 @@ function clearLogs() {
 
 function saveSettings(e) {
     e.preventDefault();
+    const nameInput = document.getElementById('setting-patient-name');
     const thresholdInput = document.getElementById('setting-impact-threshold');
     const countdownInput = document.getElementById('setting-countdown-duration');
     const soundInput = document.getElementById('setting-sound-enabled');
+    
+    if (nameInput && nameInput.value.trim() !== '') {
+        state.patientName = nameInput.value.trim();
+    }
     
     if (thresholdInput) state.thresholdImpact = parseFloat(thresholdInput.value);
     if (countdownInput) state.countdownMax = parseInt(countdownInput.value);
     if (soundInput) state.soundEnabled = soundInput.value === 'true';
     
-    showToast('Konfigurasi sensitivitas berhasil disimpan!');
+    updatePatientNameUI();
+    showToast('Konfigurasi dan Data Pasien berhasil disimpan!');
 }
 
 // Helper Utilities
